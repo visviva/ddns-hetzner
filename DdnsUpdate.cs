@@ -343,19 +343,18 @@ class Program
 
                     case "/status":
                         var detailedStatus = healthService.GetStatus();
-                        responseString = $$"""
+                        responseString = JsonSerializer.Serialize(new
                         {
-                            "healthy": {{detailedStatus.IsHealthy.ToString().ToLower()}},
-                            "uptime": "{{detailedStatus.Uptime.TotalHours:F1}} hours",
-                            "startTime": "{{detailedStatus.StartTime:O}}",
-                            "lastSuccessfulUpdate": "{{detailedStatus.LastSuccessfulUpdate:O}}",
-                            "lastUpdateAttempt": "{{detailedStatus.LastUpdateAttempt:O}}",
-                            "timeSinceLastUpdateMinutes": {{detailedStatus.TimeSinceLastUpdateMinutes}},
-                            "timeSinceLastAttemptMinutes": {{detailedStatus.TimeSinceLastAttemptMinutes}},
-                            "currentIp": "{{detailedStatus.CurrentIp}}",
-                            "lastError": "{{detailedStatus.LastError}}"
-                        }
-                        """;
+                            healthy = detailedStatus.IsHealthy,
+                            uptime = $"{detailedStatus.Uptime.TotalHours:F1} hours",
+                            startTime = detailedStatus.StartTime.ToString("O"),
+                            lastSuccessfulUpdate = detailedStatus.LastSuccessfulUpdate.ToString("O"),
+                            lastUpdateAttempt = detailedStatus.LastUpdateAttempt.ToString("O"),
+                            timeSinceLastUpdateMinutes = detailedStatus.TimeSinceLastUpdateMinutes,
+                            timeSinceLastAttemptMinutes = detailedStatus.TimeSinceLastAttemptMinutes,
+                            currentIp = detailedStatus.CurrentIp,
+                            lastError = detailedStatus.LastError
+                        });
                         break;
 
                     default:
