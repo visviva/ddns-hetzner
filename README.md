@@ -6,6 +6,9 @@ A .NET 9 application that automatically updates DNS records in Hetzner DNS when 
 > [!IMPORTANT]  
 > The DNS record must already exist. This app will not create DNS records.
 
+> [!IMPORTANT]
+> Make a backup of your DNS configuration.
+
 ## TL;DR - Quick Start
 
 **Docker Run:**
