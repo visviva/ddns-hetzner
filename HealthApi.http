@@ -1,0 +1,23 @@
+@BASE_URL=http://localhost:8080
+
+GET {{BASE_URL}}/health
+User-Agent: rest-client
+Content-Type: application/json
+
+###
+
+GET {{BASE_URL}}/health/live
+User-Agent: rest-client
+Content-Type: application/json
+
+###
+
+GET {{BASE_URL}}/health/ready
+User-Agent: rest-client
+Content-Type: application/json
+
+###
+
+GET {{BASE_URL}}/status
+User-Agent: rest-client
+Content-Type: application/json
