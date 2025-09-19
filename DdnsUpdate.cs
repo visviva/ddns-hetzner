@@ -300,7 +300,7 @@ class Program
             }
         }
 
-        var healthBindAddress = Environment.GetEnvironmentVariable("HEALTH_BIND_ADDRESS") ?? "localhost"; // Default to localhost for security
+        var healthBindAddress = Environment.GetEnvironmentVariable("HEALTH_BIND_ADDRESS") ?? "localhost";
 
         return new EnvInfo(ipv4Url, token, domain, subdomain, ttl, interval, healthPort, healthBindAddress);
     }

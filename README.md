@@ -32,7 +32,6 @@ services:
       SUBDOMAIN: ddns
       TOKEN: your_hetzner_api_token
       INTERVAL: 10
-      HEALTH_PORT: 8080
 ```
 
 Run with: `docker compose up -d`
@@ -114,7 +113,6 @@ docker run -d --name ddns-hetzner \
   -e DOMAIN=your.domain.com \
   -e SUBDOMAIN=home \
   -e TOKEN=your_hetzner_token \
-  -e HEALTH_PORT=8080 \
   -e HEALTH_BIND_ADDRESS=0.0.0.0 \
   -p 8080:8080 \
   ghcr.io/visviva/ddns-hetzner:latest
@@ -141,7 +139,7 @@ services:
       SUBDOMAIN: ddns
       TOKEN: your_hetzner_api_token
       INTERVAL: 10
-      HEALTH_PORT: 8080
+      # HEALTH_PORT: 8080
       HEALTH_BIND_ADDRESS: 0.0.0.0
 ```
 
@@ -158,6 +156,16 @@ dotnet build
 
 # Run locally
 dotnet run
+```
+
+### Local AOT Build
+
+```bash
+# Restore dependencies
+dotnet restore
+
+# Build AOT
+dotnet publish -c Release --self-contained true
 ```
 
 ### Docker Build
