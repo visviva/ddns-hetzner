@@ -16,8 +16,15 @@ RUN dotnet restore
 # Copy source code
 COPY . .
 
-# Build and publish with AOT
-RUN dotnet publish -c Release -r linux-x64 --self-contained true -o /app/publish
+# Build and publish with AOT for the target architecture
+ARG TARGETARCH
+RUN case "${TARGETARCH}" in \
+    "amd64") RUNTIME_IDENTIFIER=linux-x64 ;; \
+    "arm64") RUNTIME_IDENTIFIER=linux-arm64 ;; \
+    *) echo "Unsupported architecture: ${TARGETARCH}" && exit 1 ;; \
+    esac && \
+    echo "Building for ${RUNTIME_IDENTIFIER}" && \
+    dotnet publish -c Release -r ${RUNTIME_IDENTIFIER} --self-contained true -o /app/publish
 
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/runtime-deps:9.0 AS runtime
