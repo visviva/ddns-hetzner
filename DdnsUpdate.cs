@@ -2,7 +2,8 @@
 using DdnsHetzner;
 using DotNetEnv;
 using ErrorOr;
-
+using System.Net;
+using System.Text.Json;
 
 class Program
 {
@@ -65,6 +66,9 @@ class Program
 
             # Interval in minutes between IP checks and updates (optional, default is 10)
             INTERVAL=10
+
+            # Port for health check API (optional, default is 8080, set to 0 to disable)
+            HEALTH_PORT=8080
             """;
 
         const string envFileName = ".env";
@@ -115,10 +119,28 @@ class Program
 
         using var httpClient = new HttpClient();
 
+        // Initialize health service
+        var healthService = new HealthService();
+
+        // Start health check API if port is specified
+        if (env.healthPort > 0)
+        {
+            var healthTask = StartHealthCheckApi(healthService, env.healthPort, verbose);
+            if (verbose)
+            {
+                Console.WriteLine($"🏥 Health check API started on port {env.healthPort}");
+                Console.WriteLine($"   GET http://localhost:{env.healthPort}/health");
+                Console.WriteLine($"   GET http://localhost:{env.healthPort}/health/live");
+                Console.WriteLine($"   GET http://localhost:{env.healthPort}/health/ready");
+                Console.WriteLine($"   GET http://localhost:{env.healthPort}/status");
+            }
+        }
+
         string publicIpv4 = string.Empty;
 
         while (true)
         {
+            healthService.UpdateAttempt();
             Console.WriteLine($"\n=== {DateTime.Now} ===");
             Console.WriteLine("Starting DDNS update process...\n");
 
@@ -156,6 +178,7 @@ class Program
                     result =>
                     {
                         Console.WriteLine("✅ DNS record updated successfully");
+                        healthService.UpdateSuccessful(publicIpv4);
                         return true;
                     },
                     error =>
@@ -163,11 +186,15 @@ class Program
                         if (error.Type == 0 && error.Code == "NoUpdateNeeded")
                         {
                             Console.WriteLine("ℹ️  " + error.Description);
+                            healthService.UpdateSuccessful(publicIpv4); // Still successful, just no change needed
                             return true;
                         }
-
-                        Console.WriteLine($"\nError: {error}");
-                        Console.WriteLine("❌ Failed to update DNS record.");
+                        else
+                        {
+                            Console.WriteLine($"\nError: {error}");
+                            Console.WriteLine("❌ Failed to update DNS record.");
+                            healthService.UpdateFailed(error.Description);
+                        }
                         return false;
                     }
                 );
@@ -178,7 +205,7 @@ class Program
 
     }
 
-    record struct EnvInfo(string Ipv4Url, string Token, string Domain, string Subdomain, int ttl, int interval);
+    record struct EnvInfo(string Ipv4Url, string Token, string Domain, string Subdomain, int ttl, int interval, int healthPort);
 
     private static bool AreRequiredEnvVarsPresent()
     {
@@ -242,7 +269,18 @@ class Program
             }
         }
 
-        return new EnvInfo(ipv4Url, token, domain, subdomain, ttl, interval);
+        var healthPortStr = Environment.GetEnvironmentVariable("HEALTH_PORT");
+        int healthPort = 8080; // Default health port
+        if (healthPortStr is not null and not "")
+        {
+            if (!int.TryParse(healthPortStr, out healthPort))
+            {
+                Console.WriteLine("HEALTH_PORT environment variable is not a valid integer");
+                return Error.Validation(description: "HEALTH_PORT environment variable is not a valid integer");
+            }
+        }
+
+        return new EnvInfo(ipv4Url, token, domain, subdomain, ttl, interval, healthPort);
     }
 
     public static async Task<ErrorOr<string>> GetPublicIpv4(string ipv4Url, HttpClient httpClient)
@@ -250,11 +288,96 @@ class Program
         try
         {
             string ipv4 = await httpClient.GetStringAsync(ipv4Url);
-            return ipv4;
+            return ipv4.Trim(); // Trim whitespace including newlines
         }
         catch (Exception ex)
         {
             return Error.Unexpected(description: $"Failed to fetch IPv4: {ex.Message}");
+        }
+    }
+
+    private static async Task StartHealthCheckApi(HealthService healthService, int port, bool verbose)
+    {
+        using var listener = new HttpListener();
+        listener.Prefixes.Add($"http://localhost:{port}/");
+        listener.Prefixes.Add($"http://127.0.0.1:{port}/");
+        listener.Start();
+
+        if (verbose)
+        {
+            Console.WriteLine($"🏥 Health check server listening on port {port}");
+        }
+
+        while (true)
+        {
+            try
+            {
+                var context = await listener.GetContextAsync();
+                var request = context.Request;
+                var response = context.Response;
+
+                string responseString;
+                int statusCode = 200;
+
+                switch (request.Url?.AbsolutePath)
+                {
+                    case "/health":
+                        var healthStatus = healthService.GetStatus();
+                        responseString = healthStatus.IsHealthy
+                            ? """{"status":"healthy"}"""
+                            : """{"status":"unhealthy"}""";
+                        statusCode = healthStatus.IsHealthy ? 200 : 503;
+                        break;
+
+                    case "/health/live":
+                        responseString = """{"status":"alive"}""";
+                        break;
+
+                    case "/health/ready":
+                        var readyStatus = healthService.GetStatus();
+                        responseString = readyStatus.IsHealthy
+                            ? """{"status":"ready"}"""
+                            : """{"status":"not ready"}""";
+                        statusCode = readyStatus.IsHealthy ? 200 : 503;
+                        break;
+
+                    case "/status":
+                        var detailedStatus = healthService.GetStatus();
+                        responseString = $$"""
+                        {
+                            "healthy": {{detailedStatus.IsHealthy.ToString().ToLower()}},
+                            "uptime": "{{detailedStatus.Uptime.TotalHours:F1}} hours",
+                            "startTime": "{{detailedStatus.StartTime:O}}",
+                            "lastSuccessfulUpdate": "{{detailedStatus.LastSuccessfulUpdate:O}}",
+                            "lastUpdateAttempt": "{{detailedStatus.LastUpdateAttempt:O}}",
+                            "timeSinceLastUpdateMinutes": {{detailedStatus.TimeSinceLastUpdateMinutes}},
+                            "timeSinceLastAttemptMinutes": {{detailedStatus.TimeSinceLastAttemptMinutes}},
+                            "currentIp": "{{detailedStatus.CurrentIp}}",
+                            "lastError": "{{detailedStatus.LastError}}"
+                        }
+                        """;
+                        break;
+
+                    default:
+                        responseString = """{"error":"Not found"}""";
+                        statusCode = 404;
+                        break;
+                }
+
+                response.StatusCode = statusCode;
+                response.ContentType = "application/json";
+                var buffer = System.Text.Encoding.UTF8.GetBytes(responseString);
+                response.ContentLength64 = buffer.Length;
+                await response.OutputStream.WriteAsync(buffer);
+                response.OutputStream.Close();
+            }
+            catch (Exception ex)
+            {
+                if (verbose)
+                {
+                    Console.WriteLine($"Health check server error: {ex.Message}");
+                }
+            }
         }
     }
 }
