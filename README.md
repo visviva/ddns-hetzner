@@ -1,6 +1,62 @@
+[![Release](https://github.com/visviva/ddns-hetzner/actions/workflows/release.yml/badge.svg)](https://github.com/visviva/ddns-hetzner/actions/workflows/release.yml) [![Build and Publish Docker Image](https://github.com/visviva/ddns-hetzner/actions/workflows/docker-build-publish.yml/badge.svg)](https://github.com/visviva/ddns-hetzner/actions/workflows/docker-build-publish.yml)
 # Hetzner Dynamic DNS (DDNS) Client
 
 A .NET 9 application that automatically updates DNS records in Hetzner DNS when your public IP address changes. Built with AOT (Ahead-of-Time) compilation for optimal performance and Docker support for easy deployment.
+
+> [!IMPORTANT]  
+> The DNS record must already exist. This app will not create DNS records.
+
+## TL;DR - Quick Start
+
+**Docker Run:**
+```bash
+docker run -d --name ddns-hetzner --restart unless-stopped \
+  -e IPV4_URL=https://ipv4.icanhazip.com \
+  -e DOMAIN=domain.com \
+  -e SUBDOMAIN=ddns \
+  -e TOKEN=your_hetzner_api_token \
+  ghcr.io/visviva/ddns-hetzner:latest
+```
+or
+
+**docker-compose.yaml:**
+```yaml
+services:
+  ddns-hetzner:
+    image: ghcr.io/visviva/ddns-hetzner:latest
+    container_name: ddns-hetzner
+    restart: unless-stopped
+    environment:
+      IPV4_URL: https://ipv4.icanhazip.com
+      DOMAIN: domain.com
+      SUBDOMAIN: ddns
+      TOKEN: your_hetzner_api_token
+      INTERVAL: 10
+```
+
+Run with: `docker compose up -d`
+
+In the logs you can see:
+```bash
+=== CURRENT DATE ===
+Starting DDNS update process...
+✅ Fetched public IPv4 address: 11.22.33.44
+
+Start fetching Zones...
+✅ Fetch Zones
+
+Start fetching Records...
+✅ Fetch Records
+
+Start updating Record...
+✅ Update Record
+
+✅ DNS record updated successfully
+
+ℹ️  Waiting 10 minutes before next check...
+```
+
+Get your Hetzner API token from: [https://dns.hetzner.com/](https://dns.hetzner.com/) → API Tokens
 
 ## Features
 
