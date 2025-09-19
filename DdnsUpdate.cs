@@ -321,7 +321,19 @@ class Program
     private static async Task StartHealthCheckApi(HealthService healthService, int port, string bindAddress, bool verbose)
     {
         using var listener = new HttpListener();
-        listener.Prefixes.Add($"http://{bindAddress}:{port}/");
+
+        // Handle different bind address formats
+        string prefix;
+        if (bindAddress == "0.0.0.0" || bindAddress == "*")
+        {
+            prefix = $"http://*:{port}/";
+        }
+        else
+        {
+            prefix = $"http://{bindAddress}:{port}/";
+        }
+
+        listener.Prefixes.Add(prefix);
         listener.Start();
 
         if (verbose)
