@@ -52,7 +52,7 @@ public class DnsApi(HttpClient httpClient, string token, bool verbose)
                 return Error.Unexpected(description: $"Failed to call Hetzner DNS API: {response.StatusCode}");
             }
 
-            var records = System.Text.Json.JsonSerializer.Deserialize<RecordList>(result);
+            var records = System.Text.Json.JsonSerializer.Deserialize(result, AppJsonContext.Default.RecordList);
             if (records is null)
             {
                 return Error.Unexpected(description: "Failed to deserialize Hetzner DNS API response");
@@ -110,7 +110,7 @@ public class DnsApi(HttpClient httpClient, string token, bool verbose)
             }
 
 
-            ZoneList? zones = System.Text.Json.JsonSerializer.Deserialize<ZoneList>(result);
+            ZoneList? zones = System.Text.Json.JsonSerializer.Deserialize(result, AppJsonContext.Default.ZoneList);
             if (zones is null)
             {
                 return Error.Unexpected(description: "Failed to deserialize Hetzner DNS API response");
@@ -133,7 +133,7 @@ public class DnsApi(HttpClient httpClient, string token, bool verbose)
             request.Headers.Add("Auth-API-Token", token);
 
             var recordUpdate = new DnsRecord(zoneId, Enum.Parse<DnsRecordType>(type), name, value, ttl);
-            string jsonContent = System.Text.Json.JsonSerializer.Serialize(recordUpdate);
+            string jsonContent = System.Text.Json.JsonSerializer.Serialize(recordUpdate, AppJsonContext.Default.DnsRecord);
             request.Content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
 
             var response = await httpClient.SendAsync(request);

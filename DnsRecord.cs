@@ -56,7 +56,7 @@ public record DnsRecord(
     [property: JsonPropertyName("zone_id")]
     string ZoneId,
 
-    [property: JsonPropertyName("type"), JsonConverter(typeof(JsonStringEnumConverter))]
+    [property: JsonPropertyName("type"), JsonConverter(typeof(JsonStringEnumConverter<DnsRecordType>))]
     DnsRecordType Type,
 
     [property: JsonPropertyName("name")]
