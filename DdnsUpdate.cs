@@ -115,12 +115,13 @@ class Program
 
         using var httpClient = new HttpClient();
 
+        string publicIpv4 = string.Empty;
+
         while (true)
         {
             Console.WriteLine($"\n=== {DateTime.Now} ===");
-            Console.WriteLine("Starting DDNS update process...");
+            Console.WriteLine("Starting DDNS update process...\n");
 
-            string publicIpv4 = string.Empty;
 
             DnsApi dnsApi = new DnsApi(httpClient, env.Token, verbose);
 
@@ -128,7 +129,7 @@ class Program
                 .ThenAsync(ipv4 =>
                 {
                     var task = Task.FromResult(ipv4);
-                    Console.WriteLine($"✅ Fetched public IPv4 address: {ipv4}");
+                    Console.WriteLine($"✅ Fetched public IPv4 address: {ipv4}\n");
                     return task;
                 })
                 .Then<string, string>(ipv4 =>
@@ -161,7 +162,8 @@ class Program
                     {
                         if (error.Type == 0 && error.Code == "NoUpdateNeeded")
                         {
-                            Console.WriteLine("ℹ️ " + error.Description);
+                            Console.WriteLine("ℹ️  " + error.Description);
+                            return true;
                         }
 
                         Console.WriteLine($"\nError: {error}");
