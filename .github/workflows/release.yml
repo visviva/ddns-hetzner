@@ -1,15 +1,25 @@
 name: Release
 
+# Triggers:
+# - Push tags (v*): Build cross-platform binaries and create GitHub release
+# - Pull requests: Build cross-platform binaries only (no release) to verify builds work
+
 on:
   push:
     tags:
       - 'v*'
+  pull_request:
+    branches:
+      - master
 
 permissions:
   contents: write
 
 jobs:
   build:
+    # Builds cross-platform binaries for Windows, Linux, and macOS
+    # For tags: Creates GitHub release with binaries
+    # For PRs: Just builds and uploads artifacts for testing
     strategy:
       matrix:
         include:
@@ -53,10 +63,12 @@ jobs:
         with:
           name: ${{ matrix.artifact }}
           path: ${{ matrix.artifact }}
+          retention-days: ${{ github.event_name == 'pull_request' && 7 || 30 }}
 
   release:
     needs: build
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
     
     steps:
       - name: Download all artifacts

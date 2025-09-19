@@ -1,9 +1,19 @@
 name: Build and Publish Docker Image
 
+# Triggers:
+# - Push to master: Build and push with branch tags
+# - Push tags (v*): Build and push with version tags  
+# - Pull requests: Build only (no push) to verify Docker builds work
+
 on:
   push:
+    branches:
+      - master
     tags:
       - 'v*'
+  pull_request:
+    branches:
+      - master
 
 env:
   REGISTRY: ghcr.io
@@ -48,8 +58,18 @@ jobs:
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Build Docker image (PR check)
+        if: github.event_name == 'pull_request'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: false
+          tags: pr-${{ github.event.number }}
+          cache-from: type=gha
