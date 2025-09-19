@@ -1,0 +1,61 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build release binaries
+        run: |
+          # Build for multiple platforms
+          dotnet publish -c Release -r win-x64 --self-contained true -o ./publish/win-x64
+          dotnet publish -c Release -r linux-x64 --self-contained true -o ./publish/linux-x64
+          dotnet publish -c Release -r osx-x64 --self-contained true -o ./publish/osx-x64
+
+      - name: Create release archives
+        run: |
+          cd publish
+          
+          # Windows
+          zip -r ../ddns-hetzner-win-x64.zip win-x64/
+          
+          # Linux
+          tar -czf ../ddns-hetzner-linux-x64.tar.gz linux-x64/
+          
+          # macOS
+          tar -czf ../ddns-hetzner-osx-x64.tar.gz osx-x64/
+
+      - name: Extract tag name
+        run: echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          name: Release ${{ env.TAG_NAME }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            ddns-hetzner-win-x64.zip
+            ddns-hetzner-linux-x64.tar.gz
+            ddns-hetzner-osx-x64.tar.gz
