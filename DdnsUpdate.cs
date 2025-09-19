@@ -4,6 +4,23 @@ using DotNetEnv;
 using ErrorOr;
 using System.Net;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+
+[JsonSerializable(typeof(HealthStatusResponse))]
+internal partial class HealthStatusJsonContext : JsonSerializerContext { }
+
+public class HealthStatusResponse
+{
+    public bool Healthy { get; set; }
+    public string Uptime { get; set; } = "";
+    public string StartTime { get; set; } = "";
+    public string LastSuccessfulUpdate { get; set; } = "";
+    public string LastUpdateAttempt { get; set; } = "";
+    public double? TimeSinceLastUpdateMinutes { get; set; }
+    public double? TimeSinceLastAttemptMinutes { get; set; }
+    public string? CurrentIp { get; set; }
+    public string? LastError { get; set; }
+}
 
 class Program
 {
@@ -69,6 +86,9 @@ class Program
 
             # Port for health check API (optional, default is 8080, set to 0 to disable)
             HEALTH_PORT=8080
+
+            # Bind address for health check API (optional, default is localhost, use 0.0.0.0 for all interfaces)
+            HEALTH_BIND_ADDRESS=localhost
             """;
 
         const string envFileName = ".env";
@@ -125,14 +145,14 @@ class Program
         // Start health check API if port is specified
         if (env.healthPort > 0)
         {
-            var healthTask = StartHealthCheckApi(healthService, env.healthPort, verbose);
+            var healthTask = StartHealthCheckApi(healthService, env.healthPort, env.healthBindAddress, verbose);
             if (verbose)
             {
-                Console.WriteLine($"🏥 Health check API started on port {env.healthPort}");
-                Console.WriteLine($"   GET http://localhost:{env.healthPort}/health");
-                Console.WriteLine($"   GET http://localhost:{env.healthPort}/health/live");
-                Console.WriteLine($"   GET http://localhost:{env.healthPort}/health/ready");
-                Console.WriteLine($"   GET http://localhost:{env.healthPort}/status");
+                Console.WriteLine($"🏥 Health check API started on {env.healthBindAddress}:{env.healthPort}");
+                Console.WriteLine($"   GET http://{env.healthBindAddress}:{env.healthPort}/health");
+                Console.WriteLine($"   GET http://{env.healthBindAddress}:{env.healthPort}/health/live");
+                Console.WriteLine($"   GET http://{env.healthBindAddress}:{env.healthPort}/health/ready");
+                Console.WriteLine($"   GET http://{env.healthBindAddress}:{env.healthPort}/status");
             }
         }
 
@@ -205,7 +225,7 @@ class Program
 
     }
 
-    record struct EnvInfo(string Ipv4Url, string Token, string Domain, string Subdomain, int ttl, int interval, int healthPort);
+    record struct EnvInfo(string Ipv4Url, string Token, string Domain, string Subdomain, int ttl, int interval, int healthPort, string healthBindAddress);
 
     private static bool AreRequiredEnvVarsPresent()
     {
@@ -280,7 +300,9 @@ class Program
             }
         }
 
-        return new EnvInfo(ipv4Url, token, domain, subdomain, ttl, interval, healthPort);
+        var healthBindAddress = Environment.GetEnvironmentVariable("HEALTH_BIND_ADDRESS") ?? "localhost"; // Default to localhost for security
+
+        return new EnvInfo(ipv4Url, token, domain, subdomain, ttl, interval, healthPort, healthBindAddress);
     }
 
     public static async Task<ErrorOr<string>> GetPublicIpv4(string ipv4Url, HttpClient httpClient)
@@ -296,16 +318,15 @@ class Program
         }
     }
 
-    private static async Task StartHealthCheckApi(HealthService healthService, int port, bool verbose)
+    private static async Task StartHealthCheckApi(HealthService healthService, int port, string bindAddress, bool verbose)
     {
         using var listener = new HttpListener();
-        listener.Prefixes.Add($"http://localhost:{port}/");
-        listener.Prefixes.Add($"http://127.0.0.1:{port}/");
+        listener.Prefixes.Add($"http://{bindAddress}:{port}/");
         listener.Start();
 
         if (verbose)
         {
-            Console.WriteLine($"🏥 Health check server listening on port {port}");
+            Console.WriteLine($"🏥 Health check server listening on {bindAddress}:{port}");
         }
 
         while (true)
@@ -343,18 +364,19 @@ class Program
 
                     case "/status":
                         var detailedStatus = healthService.GetStatus();
-                        responseString = JsonSerializer.Serialize(new
+                        var statusResponse = new HealthStatusResponse
                         {
-                            healthy = detailedStatus.IsHealthy,
-                            uptime = $"{detailedStatus.Uptime.TotalHours:F1} hours",
-                            startTime = detailedStatus.StartTime.ToString("O"),
-                            lastSuccessfulUpdate = detailedStatus.LastSuccessfulUpdate.ToString("O"),
-                            lastUpdateAttempt = detailedStatus.LastUpdateAttempt.ToString("O"),
-                            timeSinceLastUpdateMinutes = detailedStatus.TimeSinceLastUpdateMinutes,
-                            timeSinceLastAttemptMinutes = detailedStatus.TimeSinceLastAttemptMinutes,
-                            currentIp = detailedStatus.CurrentIp,
-                            lastError = detailedStatus.LastError
-                        });
+                            Healthy = detailedStatus.IsHealthy,
+                            Uptime = $"{detailedStatus.Uptime.TotalHours:F1} hours",
+                            StartTime = detailedStatus.StartTime.ToString("O"),
+                            LastSuccessfulUpdate = detailedStatus.LastSuccessfulUpdate.ToString("O"),
+                            LastUpdateAttempt = detailedStatus.LastUpdateAttempt.ToString("O"),
+                            TimeSinceLastUpdateMinutes = detailedStatus.TimeSinceLastUpdateMinutes,
+                            TimeSinceLastAttemptMinutes = detailedStatus.TimeSinceLastAttemptMinutes,
+                            CurrentIp = detailedStatus.CurrentIp,
+                            LastError = detailedStatus.LastError
+                        };
+                        responseString = JsonSerializer.Serialize(statusResponse, HealthStatusJsonContext.Default.HealthStatusResponse);
                         break;
 
                     default:
