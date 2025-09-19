@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 
 namespace DdnsHetzner;
 
-public class HetznerDateTimeConverter : JsonConverter<DateTime?>
+public class DateTimeConverter : JsonConverter<DateTime?>
 {
     private static readonly string[] DateFormats =
     {
@@ -23,7 +23,6 @@ public class HetznerDateTimeConverter : JsonConverter<DateTime?>
             if (string.IsNullOrEmpty(dateString))
                 return null;
 
-            // Try each format
             foreach (var format in DateFormats)
             {
                 if (DateTime.TryParseExact(dateString, format, CultureInfo.InvariantCulture,
@@ -33,7 +32,6 @@ public class HetznerDateTimeConverter : JsonConverter<DateTime?>
                 }
             }
 
-            // Fallback: try general parsing
             if (DateTime.TryParse(dateString, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out DateTime fallbackResult))
             {
                 return fallbackResult;

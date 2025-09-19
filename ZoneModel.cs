@@ -42,10 +42,10 @@ public record Zone(
     [property: JsonPropertyName("id")]
     string Id,
 
-    [property: JsonPropertyName("created"), JsonConverter(typeof(HetznerDateTimeConverter))]
+    [property: JsonPropertyName("created"), JsonConverter(typeof(DateTimeConverter))]
     DateTime? Created,
 
-    [property: JsonPropertyName("modified"), JsonConverter(typeof(HetznerDateTimeConverter))]
+    [property: JsonPropertyName("modified"), JsonConverter(typeof(DateTimeConverter))]
     DateTime? Modified,
 
     [property: JsonPropertyName("legacy_dns_host")]
@@ -81,7 +81,7 @@ public record Zone(
     [property: JsonPropertyName("ttl")]
     int? Ttl,
 
-    [property: JsonPropertyName("verified"), JsonConverter(typeof(HetznerDateTimeConverter))]
+    [property: JsonPropertyName("verified"), JsonConverter(typeof(DateTimeConverter))]
     DateTime? Verified,
 
     [property: JsonPropertyName("records_count")]

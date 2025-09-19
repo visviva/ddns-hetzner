@@ -9,10 +9,10 @@ public record Record(
     [property: JsonPropertyName("id")]
     string Id,
 
-    [property: JsonPropertyName("created"), JsonConverter(typeof(HetznerDateTimeConverter))]
+    [property: JsonPropertyName("created"), JsonConverter(typeof(DateTimeConverter))]
     DateTime? Created,
 
-    [property: JsonPropertyName("modified"), JsonConverter(typeof(HetznerDateTimeConverter))]
+    [property: JsonPropertyName("modified"), JsonConverter(typeof(DateTimeConverter))]
     DateTime? Modified,
 
     [property: JsonPropertyName("zone_id")]
