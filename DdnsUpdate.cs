@@ -87,11 +87,18 @@ class Program
 
     private static async Task RunDdnsUpdate(bool verbose)
     {
-        Env.Load();
+        // Only load .env file if required environment variables are not already set
+        bool envFileLoaded = false;
+        if (!AreRequiredEnvVarsPresent())
+        {
+            Env.Load();
+            envFileLoaded = true;
+        }
+
         var envOrError = CheckEnv();
         if (envOrError.IsError)
         {
-            Console.WriteLine($"❌ Validation of .env file failed: {envOrError.FirstError.Description}");
+            Console.WriteLine($"❌ Environment variable validation failed: {envOrError.FirstError.Description}");
             Environment.Exit(1);
         }
 
@@ -100,6 +107,7 @@ class Program
         if (verbose)
         {
             Console.WriteLine("🔧 Verbose mode enabled");
+            Console.WriteLine($"📄 Environment variables source: {(envFileLoaded ? ".env file" : "system environment")}");
             Console.WriteLine($"📍 Domain: {env.Domain}");
             Console.WriteLine($"🏠 Subdomain: {env.Subdomain}");
             Console.WriteLine($"🌐 IPv4 URL: {env.Ipv4Url}");
@@ -169,6 +177,16 @@ class Program
     }
 
     record struct EnvInfo(string Ipv4Url, string Token, string Domain, string Subdomain, int ttl, int interval);
+
+    private static bool AreRequiredEnvVarsPresent()
+    {
+        var requiredVars = new[] { "IPV4_URL", "TOKEN", "DOMAIN", "SUBDOMAIN" };
+        return requiredVars.All(varName =>
+        {
+            var value = Environment.GetEnvironmentVariable(varName);
+            return !string.IsNullOrEmpty(value);
+        });
+    }
 
     private static ErrorOr<EnvInfo> CheckEnv()
     {
