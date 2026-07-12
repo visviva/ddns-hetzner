@@ -1,4 +1,9 @@
 [![Release](https://github.com/visviva/ddns-hetzner/actions/workflows/release.yml/badge.svg)](https://github.com/visviva/ddns-hetzner/actions/workflows/release.yml) [![Build and Publish Docker Image](https://github.com/visviva/ddns-hetzner/actions/workflows/docker-build-publish.yml/badge.svg)](https://github.com/visviva/ddns-hetzner/actions/workflows/docker-build-publish.yml)
+
+> [!CAUTION]
+> Hetzner changed the DNS API. Since May 2026 this client is not working anymore.
+> Check [here](https://docs.hetzner.cloud/reference/cloud) for the updated API and lots of great code examples from Hetzner. 
+
 # Hetzner Dynamic DNS (DDNS) Client
 
 A .NET 9 application that automatically updates DNS records in Hetzner DNS when your public IP address changes. Built with AOT (Ahead-of-Time) compilation for optimal performance and Docker support for easy deployment.
